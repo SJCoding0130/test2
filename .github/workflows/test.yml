@@ -8,9 +8,6 @@ jobs:
 
     steps:
 
-    - name: Debug Repo B branches
-      run: |
-        git ls-remote --heads https://github.com/SJCoding0130/story2.git
 
     # ==========================
     # 1. Checkout Repo A
