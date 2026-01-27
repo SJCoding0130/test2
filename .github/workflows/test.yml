@@ -5,3 +5,91 @@ on:
 jobs:
   run-python:
     runs-on: windows-latest
+
+    steps:
+
+    - name: Debug Repo B branches
+      run: |
+        git ls-remote --heads https://github.com/SJCoding0130/story2.git
+
+    # ==========================
+    # 1. Checkout Repo A
+    # ==========================
+    - name: Checkout Repo A
+      uses: actions/checkout@v4
+
+    - name: List files in Repo A
+      shell: pwsh
+      run: |
+        echo "===== Files in Repo A ====="
+        Get-ChildItem -Recurse -Force
+
+      
+
+    # ==========================
+    # 2. Checkout Repo B into subfolder
+    # ==========================
+    
+    - name: Checkout Repo B (output repo)
+      uses: actions/checkout@v4
+      with:
+        #repository: ${{ secrets.REPO_B_USERNAME }}/${{ secrets.REPO_B_NAME }}
+        repository: SJCoding0130/story2
+        token: ${{ secrets.bla }}
+        path: repo_b
+        fetch-depth: 1       # shallow clone
+        sparse-checkout: |
+          asset_metadata.json
+          view.php
+
+    # ==========================
+    # 3. Set up Python
+    # ==========================
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        pip install -U pip
+        php -v
+        pip install requests
+        pip install UnityPy
+        
+        # 4. Setup PHP
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: "8.2"
+        coverage: none        
+        
+
+    # ==========================
+    # 4. Run python script
+    # ==========================
+    - name: Run try.py and test.py
+      shell: pwsh
+      run: |
+        cd repo_b
+        python -u ../New Text Document.py
+        python -u ../New Text Document3.py
+        python -u ../ttt.py
+
+    # ==========================
+    # 5. Push repo B updates
+    # ==========================
+    - name: Push updates to Repo B
+      run: |
+        cd repo_b
+        git sparse-checkout disable
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git reset downloaded_assets/
+        # git reset json/
+        # git add json/common.chapter.json
+        git commit -m "Update from Repo A workflow" || echo "No changes"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.bla }}
