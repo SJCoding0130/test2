@@ -77,8 +77,8 @@ jobs:
       shell: pwsh
       run: |
         cd repo_b
-        python -u ../New Text Document.py
-        python -u ../New Text Document3.py
+        python -u "../New Text Document.py"
+        python -u "../New Text Document3.py"
         python -u ../ttt.py
 
     # ==========================
