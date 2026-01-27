@@ -1,7 +1,231 @@
-name: Trigger2
+name: External Trigger Unity Primary
+
 on:
   workflow_dispatch:
 
 jobs:
   run-python:
     runs-on: windows-latest
+
+    env:
+      ASSET_RIPPER_VERSION: "0.3.4.0"
+
+    steps:
+    # ==========================
+    # 1. Checkout main repo (Repo A)
+    # ==========================
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.bla }}
+        fetch-depth: 0
+
+    # ==========================
+    # 2. Download main bin file
+    # ==========================
+    - name: Download CloudFront file
+      run: |
+        curl.exe -L "${{secrets.link1}}" -o target.bin
+
+    # ==========================
+    # 3. Python setup
+    # ==========================
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install UnityPy
+      run: |
+        python -m pip install --upgrade pip
+        pip install UnityPy
+
+    - name: List down all the chapter.asset
+      run: |
+        python "chapter.py" "target.bin"
+
+    # ==========================
+    # 4. Checkout ETag repo (Repo B)
+    # ==========================
+    - name: Checkout ETag repo
+      uses: actions/checkout@v4
+      with:
+        repository: SJCoding0130/story
+        path: generate
+        token: ${{ secrets.OTHER_REPO_TOKEN }}
+
+    # ==========================
+    # 5. Download chapter.assets only if changed
+    # ==========================
+    - name: Download CloudFront file for chapter.asset (only if changed)
+      shell: pwsh
+      run: |
+       function ConvertTo-Hashtable($obj) {
+       if ($obj -is [System.Collections.IDictionary]) {
+        $hash = @{}
+        foreach ($key in $obj.Keys) {
+            $hash[$key] = ConvertTo-Hashtable $obj[$key]
+        }
+        return $hash
+       } elseif ($obj -is [System.Collections.IEnumerable] -and $obj -notlike [string]) {
+        return ($obj | ForEach-Object { ConvertTo-Hashtable $_ })
+       } else {
+        return $obj
+       }
+       }
+
+        $base_url = "${{ secrets.link2 }}"
+        $meta_file = "generate/etag-data.json"
+
+        # Load metadata from other repo
+        if (Test-Path $meta_file) {
+          $raw = Get-Content $meta_file -Raw | ConvertFrom-Json
+          $meta = ConvertTo-Hashtable $raw
+        } else {
+          $meta = @{}
+        }
+
+        # Process each file in outputs.txt
+        Get-Content outputs.txt | ForEach-Object {
+          $file_name = $_.Trim()
+          $url = "$base_url/$file_name"
+
+          # Ensure metadata entry exists
+          if (-not $meta.ContainsKey($file_name)) {
+            $meta[$file_name] = [ordered]@{
+              ETag = ""
+              LastModified = ""
+              LastCheck = ""
+            }
+          }
+
+          # Fetch headers only
+          $response = curl.exe -sI $url
+
+          #$current_etag = ($response -split "`r`n" | Where-Object { $_ -match "^ETag:" }) -replace "ETag:\s*", ""
+          #$current_mod  = ($response -split "`r`n" | Where-Object { $_ -match "^Last-Modified:" }) -replace "Last-Modified:\s*", ""
+
+          #$saved_etag = $meta[$file_name].ETag
+          #$saved_mod  = $meta[$file_name].LastModified
+
+           #start
+           $current_etag = ($response -split "`r`n" |
+           Where-Object { $_ -match "^ETag:" }).
+           Replace("ETag:", "").Trim().Trim('"')
+
+           $current_mod  = ($response -split "`r`n" |
+           Where-Object { $_ -match "^Last-Modified:" }).
+           Replace("Last-Modified:", "").Trim()
+
+           $saved_etag = $meta[$file_name].ETag.Trim().Trim('"')
+           $saved_mod  = $meta[$file_name].LastModified
+
+           # ---- DEBUG LOGGING ----
+           Write-Host "====================================================="
+           Write-Host "FILE:        $file_name"
+           Write-Host "URL:         $url"
+           Write-Host "Saved ETag:  '$saved_etag'"
+           Write-Host "Current ETag:'$current_etag'"
+           Write-Host "Match?       " -NoNewline
+           if ($current_etag -eq $saved_etag) {
+           Write-Host "YES (UNCHANGED)"
+           } else {
+           Write-Host "NO (CHANGED)"
+           }
+           Write-Host "====================================================="
+           #end
+
+
+
+
+
+
+          # Compare for changes
+          if ($current_etag -ne $saved_etag) {
+            Write-Host "Downloading $file_name (file changed)"
+            curl.exe -L $url -o (Split-Path $file_name -Leaf)
+
+            $meta[$file_name].ETag = $current_etag
+            $meta[$file_name].LastModified = $current_mod
+          } else {
+            Write-Host "$file_name is up-to-date"
+          }
+
+          $meta[$file_name].LastCheck = (Get-Date).ToString("o")
+        }
+
+        # Save updated metadata
+        # Ensure stable key order before saving
+        $orderedMeta = [ordered]@{}
+
+        $meta.Keys | Sort-Object | ForEach-Object {
+        $key = $_
+        $orderedMeta[$key] = $meta[$key]
+        }
+
+        $newMetaPath = Join-Path $env:GITHUB_WORKSPACE "target-repo/generate/etag-data.json"
+        $orderedMeta | ConvertTo-Json -Depth 10 | Set-Content $newMetaPath
+
+
+
+    # ==========================
+    # 6. Optionally run AssetRipper
+    # ==========================
+    - name: Download & unzip AssetRipper
+      run: |
+        curl.exe -L "https://github.com/AssetRipper/AssetRipper/releases/download/${env:ASSET_RIPPER_VERSION}/AssetRipper_win_x64.zip" -o AssetRipper.zip
+        Expand-Archive AssetRipper.zip -DestinationPath AssetRipper
+
+    - name: Run AssetRipper on downloaded chapter.assets
+      run: |
+        Get-ChildItem -Path . -Filter "*.asset" | ForEach-Object {
+          $asset_file = $_.FullName
+          $output_dir = "rip_output\$($_.BaseName)"
+          .\AssetRipper\AssetRipper.exe $asset_file -o $output_dir -q > $null 2>&1
+        }
+
+    # ==========================
+    # 7. Save output list
+    # ==========================
+    - name: Save output list
+      run: |
+        (Get-ChildItem -Recurse rip_output | Select-Object FullName) | Out-File output.txt
+
+    # ==========================
+    # 8. Push results + updated ETag data to Repo B
+    # ==========================
+    - name: Push to private repo
+      shell: pwsh
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+
+        # Clone Repo B
+        git clone https://${{ secrets.OTHER_REPO_TOKEN }}@${{ secrets.github }} target-repo
+        cd target-repo
+
+        $workflow_root = $env:GITHUB_WORKSPACE
+        $target_folder = Join-Path $PWD "generate"
+
+        if (-Not (Test-Path $target_folder)) {
+          New-Item -ItemType Directory -Path $target_folder | Out-Null
+        }
+
+        # Copy required files
+        $files_to_copy = @("output.txt", "outputs.txt", "generate/etag-data.json")
+        foreach ($file in $files_to_copy) {
+          $source_path = Join-Path $workflow_root $file
+          if (Test-Path $source_path) {
+            Copy-Item $source_path -Destination $target_folder -Force
+          }
+        }
+
+        # Copy chapter.asset files
+        $pattern = Join-Path $workflow_root "rip_output\*\ExportedProject\Assets\MonoBehaviour\*.book.asset"
+        Get-ChildItem -Path $pattern | ForEach-Object {
+          Copy-Item $_.FullName -Destination $target_folder -Force
+        }
+
+        git add .
+        git commit -m "Update generated chapter assets + ETag metadata" || echo "No changes"
+        git push origin main
