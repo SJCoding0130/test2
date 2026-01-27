@@ -38,6 +38,16 @@ jobs:
         sparse-checkout: |
           asset_metadata.json
           view.php
+    
+    - name: Show Repo B path and files
+      shell: pwsh
+      run: |
+        Write-Host "===== Repo B absolute path ====="
+        Resolve-Path repo_b
+
+        Write-Host "===== Files in Repo B ====="
+        Get-ChildItem repo_b -Recurse -Force
+
 
     # ==========================
     # 3. Set up Python
