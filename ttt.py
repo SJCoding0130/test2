@@ -29,7 +29,7 @@ def wait_for_server(url, timeout=20):
 # ----------------------------------
 # Paths (repo_b directory)
 # ----------------------------------
-BASE_DIR = Path(r"D:\a\tester\tester\repo_b").resolve()
+BASE_DIR = Path(r"D:\a\test2\test2\repo_b").resolve()
 print(f"BASE_DIR = {BASE_DIR}", flush=True)
 
 JSON_FOLDER = BASE_DIR / "json"
