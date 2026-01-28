@@ -102,7 +102,7 @@ def download_assets(app_version: str, file_paths: list, prev_metadata: dict):
                 last_checked = datetime.utcnow().isoformat()
 
                 prev_etag = prev_metadata.get(clean_name, {}).get("ETag")
-                if etag == prev_etag and os.path.exists(local_path):
+                if etag == prev_etag:
                     print(f"[{idx}/{len(file_paths)}] Skipped (ETag matched): {clean_name}")
                     metadata[clean_name] = {
                         "ETag": etag,
@@ -177,3 +177,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
