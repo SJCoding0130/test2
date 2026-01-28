@@ -99,7 +99,7 @@ def download_assets(app_version: str, file_paths: list, prev_metadata: dict):
             if head_resp.ok:
                 etag = head_resp.headers.get("ETag", "N/A")
                 last_modified = head_resp.headers.get("Last-Modified", "N/A")
-                last_checked = datetime.utcnow().isoformat()
+                #last_checked = datetime.utcnow().isoformat()
 
                 prev_etag = prev_metadata.get(clean_name, {}).get("ETag")
                 if etag == prev_etag:
@@ -107,7 +107,7 @@ def download_assets(app_version: str, file_paths: list, prev_metadata: dict):
                     metadata[clean_name] = {
                         "ETag": etag,
                         "Last-Modified": last_modified,
-                        "Last-Checked": last_checked
+                        #"Last-Checked": last_checked
                     }
                     continue
 
@@ -124,7 +124,7 @@ def download_assets(app_version: str, file_paths: list, prev_metadata: dict):
                 metadata[clean_name] = {
                     "ETag": etag,
                     "Last-Modified": last_modified,
-                    "Last-Checked": last_checked
+                    #"Last-Checked": last_checked
                 }
             else:
                 print(f"[{idx}/{len(file_paths)}] HEAD request failed: {clean_name}")
@@ -177,4 +177,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
