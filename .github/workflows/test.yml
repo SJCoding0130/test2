@@ -36,7 +36,7 @@ jobs:
         path: repo_b
         fetch-depth: 1       # shallow clone
         sparse-checkout: |
-          asset_metadata.json
+          assetMetadata.json
           view.php
     
     - name: Show Repo B path and files
