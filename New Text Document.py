@@ -157,9 +157,12 @@ def main():
     print(f"Total assets to check/download: {len(files)}")
 
     # Save asset filenames (clean names)
+    # Generate cleaned filenames and sort them in ascending order
+    clean_filenames = sorted(get_clean_filename(file_path) for file_path in files)
+
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        for file_path in files:
-            f.write(get_clean_filename(file_path) + "\n")
+        for filename in clean_filenames:
+            f.write(filename + "\n")
     print(f"Asset filenames saved to {OUTPUT_FILE}")
 
     # Load previous metadata
