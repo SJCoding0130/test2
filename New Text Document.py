@@ -13,7 +13,7 @@ ASSET_DIR = "downloaded_assets"
 
 FILTER_KEYWORDS = [
     "gacha_assets_all",
-    "scene_adv.scenarios"
+    "scene_adv.scenarios",
     ".chapter",
     ".book",
 ]
